@@ -1,7 +1,5 @@
 package com.pemmob.fauzanmalikarkan.ui.screen
 
-import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,40 +18,47 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.pemmob.fauzanmalikarkan.R
-import com.pemmob.fauzanmalikarkan.data.dummy.DummyData
 import com.pemmob.fauzanmalikarkan.data.model.Category
 import com.pemmob.fauzanmalikarkan.data.model.Product
+import com.pemmob.fauzanmalikarkan.ui.viewmodel.ProductUiState
+import com.pemmob.fauzanmalikarkan.ui.viewmodel.ProductViewModel
+import com.pemmob.fauzanmalikarkan.util.JualanConstants
 
 @Composable
 fun ProductItemCard(product: Product, onClick: () -> Unit) {
@@ -66,18 +71,22 @@ fun ProductItemCard(product: Product, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(all = 12.dp)) {
-            val imageRes = if (product.img == "dummy_product") R.drawable.dummy_product else R.drawable.dummy_product
+            val imageModel: Any = if (product.img == "dummy_product") {
+                R.drawable.dummy_product
+            } else {
+                "${JualanConstants.BASE_URL}img/${product.img}"
+            }
 
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(id = imageRes),
+                AsyncImage(
+                    model = imageModel,
                     contentDescription = product.name,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(shape = RoundedCornerShape(8.dp))
+                        .clip(shape = RoundedCornerShape(size = 8.dp))
                         .background(color = Color.White),
                     contentScale = ContentScale.Fit
                 )
@@ -141,68 +150,93 @@ fun CategoryItem(category: Category, isSelected: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewProduct() {
-    ProductItemCard(product = DummyData.product[0], onClick = {})
-}
+// @Preview(showBackground = true)
+// @Composable
+// fun PreviewProduct() {
+//     ProductItemCard(product = DummyData.product[0], onClick = {})
+// }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewCategory() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CategoryItem(
-            category = DummyData.categories[0],
-            isSelected = true,
-            onClick = {}
-        )
-    }
-}
+// @Preview(showBackground = true)
+// @Composable
+// fun PreviewCategory() {
+//     Box(
+//         modifier = Modifier.fillMaxSize(),
+//         contentAlignment = Alignment.Center
+//     ) {
+//         CategoryItem(
+//             category = DummyData.categories[0],
+//             isSelected = true,
+//             onClick = {}
+//         )
+//     }
+// }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DaftarProdukScreen(navController: androidx.navigation.NavController? = null) {
-    val context = LocalContext.current
-    var selectedCategoryId by rememberSaveable { mutableStateOf(DummyData.categories.firstOrNull()?.id) }
+fun DaftarProdukScreen(
+    navController: NavController? = null,
+    viewModel: ProductViewModel
+) {
+    var selectedCategoryId by rememberSaveable { mutableStateOf<Int?>(value = null) }
+    val uiState by viewModel.uiState.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf(value = "") }
-    var isLoading by remember { mutableStateOf(value = false) }
-    var filteredProducts by remember { mutableStateOf(value = emptyList<Product>()) }
 
-    androidx.compose.runtime.LaunchedEffect(key1 = selectedCategoryId, key2 = searchQuery) {
-        isLoading = true
-        kotlinx.coroutines.delay(1000)
-        
-        val filteredByCategory = if (selectedCategoryId != null) {
-            DummyData.product.filter { it.category_id == selectedCategoryId }
-        } else DummyData.product
-
-        filteredProducts = if (searchQuery.isBlank()) {
-            filteredByCategory
-        } else {
-            filteredByCategory.filter { it.name.contains(other = searchQuery, ignoreCase = true) }
+    when (val state = uiState) {
+        is ProductUiState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
+        is ProductUiState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Error: ${state.message}",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        is ProductUiState.Success -> {
+            if (selectedCategoryId == null && state.categories.isNotEmpty()) {
+                selectedCategoryId = state.categories.first().id
+            }
 
-        isLoading = false
+            val filteredByCategory = if (selectedCategoryId != null) {
+                state.products.filter { it.category_id == selectedCategoryId }
+            } else {
+                state.products
+            }
+
+            val filteredProducts = if (searchQuery.isBlank()) {
+                filteredByCategory
+            } else {
+                filteredByCategory.filter {
+                    it.name.contains(other = searchQuery, ignoreCase = true)
+                }
+            }
+
+            StatelessDaftarProduct(
+                categories = state.categories,
+                selectedCategoryId = selectedCategoryId,
+                onCategorySelected = { selectedCategoryId = it },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                isLoading = false,
+                products = filteredProducts,
+                onProductClick = { product ->
+                    navController?.navigate(route = "detail/${product.id}")
+                },
+                onContactUsClick = {
+                    navController?.navigate(route = "hubungi_kami")
+                }
+            )
+        }
     }
-
-    StatelessDaftarProduct(
-        categories = DummyData.categories,
-        selectedCategoryId = selectedCategoryId,
-        onCategorySelected = { selectedCategoryId = it },
-        searchQuery = searchQuery,
-        onSearchQueryChange = { searchQuery = it },
-        isLoading = isLoading,
-        products = filteredProducts,
-        onProductClick = { product ->
-            navController?.navigate(route = "detail/${product.id}")
-        },
-        onContactUsClick = {
-            navController?.navigate(route = "hubungi_kami")
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -227,33 +261,33 @@ fun StatelessDaftarProduct(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    androidx.compose.material3.IconButton(onClick = { /* TODO: Keranjang action */ }) {
-                        androidx.compose.material3.Icon(
+                    IconButton(onClick = { /* TODO: Keranjang action */ }) {
+                        Icon(
                             imageVector = Icons.Default.ShoppingCart,
                             contentDescription = "Keranjang",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     var expanded by remember { mutableStateOf(value = false) }
-                    androidx.compose.material3.IconButton(onClick = { expanded = true }) {
-                        androidx.compose.material3.Icon(
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Menu",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
-                    androidx.compose.material3.DropdownMenu(
+                    DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        androidx.compose.material3.DropdownMenuItem(
+                        DropdownMenuItem(
                             text = { Text("Hubungi Kami") },
                             onClick = {
                                 expanded = false
                                 onContactUsClick()
                             },
                             leadingIcon = {
-                                androidx.compose.material3.Icon(
+                                Icon(
                                     imageVector = Icons.Default.Email,
                                     contentDescription = "Email"
                                 )
@@ -311,7 +345,7 @@ fun StatelessDaftarProduct(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        androidx.compose.material3.CircularProgressIndicator()
+                        CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Mencari data...")
                     }
