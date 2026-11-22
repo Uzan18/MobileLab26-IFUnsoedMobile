@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:belajarflutter/bloc/produk_bloc.dart';
 import 'package:belajarflutter/model/produk.dart';
 import 'package:belajarflutter/ui/produk_form.dart';
+import 'package:belajarflutter/ui/produk_page.dart';
+import 'package:belajarflutter/widget/warning_dialog.dart';
 
 class ProdukDetail extends StatefulWidget {
   final Produk? produk;
@@ -35,7 +38,7 @@ class _ProdukDetailState extends State<ProdukDetail> {
               style: const TextStyle(fontSize: 18.0),
             ),
             const SizedBox(height: 20),
-            _tombolHapusEdit()
+            _tombolHapusEdit(),
           ],
         ),
       ),
@@ -46,11 +49,7 @@ class _ProdukDetailState extends State<ProdukDetail> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-          ),
+        OutlinedButton(
           child: const Text("EDIT"),
           onPressed: () {
             Navigator.push(
@@ -63,12 +62,7 @@ class _ProdukDetailState extends State<ProdukDetail> {
             );
           },
         ),
-        const SizedBox(width: 10),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-          ),
+        OutlinedButton(
           child: const Text("DELETE"),
           onPressed: () => confirmHapus(),
         ),
@@ -82,7 +76,27 @@ class _ProdukDetailState extends State<ProdukDetail> {
       actions: [
         OutlinedButton(
           child: const Text("Ya"),
-          onPressed: () {},
+          onPressed: () {
+            ProdukBloc.deleteProduk(id: widget.produk!.id).then((value) {
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProdukPage(),
+                  ),
+                );
+              }
+            }, onError: (error) {
+              if (mounted) {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) => const WarningDialog(
+                    description: "Hapus gagal, silahkan coba lagi",
+                  ),
+                );
+              }
+            });
+          },
         ),
         OutlinedButton(
           child: const Text("Batal"),

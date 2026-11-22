@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:belajarflutter/bloc/registrasi_bloc.dart';
+import 'package:belajarflutter/widget/success_dialog.dart';
+import 'package:belajarflutter/widget/warning_dialog.dart';
 
 class RegistrasiPage extends StatefulWidget {
   const RegistrasiPage({super.key});
@@ -9,7 +12,6 @@ class RegistrasiPage extends StatefulWidget {
 
 class _RegistrasiPageState extends State<RegistrasiPage> {
   final _formKey = GlobalKey<FormState>();
-  // ignore: unused_field, prefer_final_fields
   bool _isLoading = false;
 
   final _namaTextboxController = TextEditingController();
@@ -119,8 +121,52 @@ class _RegistrasiPageState extends State<RegistrasiPage> {
     return ElevatedButton(
       child: const Text("Registrasi"),
       onPressed: () {
-        if (_formKey.currentState!.validate()) {}
+        var validate = _formKey.currentState!.validate();
+        if (validate) {
+          if (!_isLoading) _submit();
+        }
       },
     );
+  }
+
+  void _submit() {
+    _formKey.currentState!.save();
+    setState(() {
+      _isLoading = true;
+    });
+    RegistrasiBloc.registrasi(
+      nama: _namaTextboxController.text,
+      email: _emailTextboxController.text,
+      password: _passwordTextboxController.text,
+    ).then((value) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => SuccessDialog(
+            description: "Registrasi berhasil, silahkan login",
+            okClick: () {
+              Navigator.pop(context);
+            },
+          ),
+        );
+      }
+    }, onError: (error) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => const WarningDialog(
+            description: "Registrasi gagal, silahkan coba lagi",
+          ),
+        );
+      }
+    }).whenComplete(() {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
   }
 }

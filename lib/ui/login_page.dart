@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:belajarflutter/bloc/login_bloc.dart';
+import 'package:belajarflutter/helpers/user_info.dart';
+import 'package:belajarflutter/ui/produk_page.dart';
 import 'package:belajarflutter/ui/registrasi_page.dart';
+import 'package:belajarflutter/widget/warning_dialog.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,7 +14,6 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  // ignore: unused_field, prefer_final_fields
   bool _isLoading = false;
 
   final _emailTextboxController = TextEditingController();
@@ -40,10 +43,8 @@ class _LoginPageState extends State<LoginPage> {
                 _passwordTextField(),
                 const SizedBox(height: 16),
                 _buttonLogin(),
-                const SizedBox(
-                  height: 30,
-                ),
-                _menuRegistrasi()
+                const SizedBox(height: 30),
+                _menuRegistrasi(),
               ],
             ),
           ),
@@ -85,9 +86,50 @@ class _LoginPageState extends State<LoginPage> {
     return ElevatedButton(
       child: const Text("Login"),
       onPressed: () {
-        if (_formKey.currentState!.validate()) {}
+        var validate = _formKey.currentState!.validate();
+        if (validate) {
+          if (!_isLoading) _submit();
+        }
       },
     );
+  }
+
+  void _submit() {
+    _formKey.currentState!.save();
+    setState(() {
+      _isLoading = true;
+    });
+    LoginBloc.login(
+      email: _emailTextboxController.text,
+      password: _passwordTextboxController.text,
+    ).then((value) async {
+      await UserInfo().setToken(value.token.toString());
+      await UserInfo().setUserID(int.parse(value.userID.toString()));
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProdukPage(),
+          ),
+        );
+      }
+    }, onError: (error) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => const WarningDialog(
+            description: "Login gagal, silahkan coba lagi",
+          ),
+        );
+      }
+    }).whenComplete(() {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   Widget _menuRegistrasi() {
